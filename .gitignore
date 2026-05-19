@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code 권한 설정
+.claude/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 임시·테스트 결과
+*.tmp
+*.log
+.cache/
+
+# 데이터 백업 (크기에 따라 결정 — 현재는 모두 포함)
+# data/*.parquet
