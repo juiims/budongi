@@ -30,3 +30,13 @@ desktop.ini
 
 # 데이터 백업 (크기에 따라 결정 — 현재는 모두 포함)
 # data/*.parquet
+
+# 디버그·검증 스크립트 (배포 불필요)
+_*.py
+_*.txt
+_*.json
+_*.html
+
+# 현재 진행 중인 수집 (Streamlit Cloud 배포 후 사용자가 재수집)
+data/rtms_rents/
+
