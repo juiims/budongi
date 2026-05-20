@@ -73,15 +73,15 @@ def refresh_catalog():
     env["SCREEN_GYEONGGI"] = "1"
     env["SCREEN_NO_PRICE_FILTER"] = "1"
     env.pop("SCREEN_SMOKE", None)
-    print("\n[1/2] screen_candidates.py (단지 스크리닝)...")
-    subprocess.run([sys.executable, "screen_candidates.py"], env=env, check=True)
+    print("\n[1/2] lib.screen_candidates (단지 스크리닝)...")
+    subprocess.run([sys.executable, "-m", "lib.screen_candidates"], env=env, check=True)
 
     # 2) 점수 부여
     env2 = os.environ.copy()
     env2["SCORE_INPUT"] = CATALOG_RAW
     env2["SCORE_OUTPUT"] = CATALOG_SCORED
-    print("\n[2/2] score_candidates.py (입지 점수화)...")
-    subprocess.run([sys.executable, "score_candidates.py"], env=env2, check=True)
+    print("\n[2/2] score.score_candidates (입지 점수화)...")
+    subprocess.run([sys.executable, "-m", "score.score_candidates"], env=env2, check=True)
 
     print("\n[갱신 완료] 검색 진행...\n")
 
@@ -122,6 +122,8 @@ def main():
     p.add_argument("--min-score", type=float, default=0,
                    help="최소 입지점수 (기본 0)")
     p.add_argument("--region", choices=["서울", "경기"], help="지역 필터")
+    p.add_argument("--exclude-gu", default="",
+                   help="제외할 시구 (콤마 구분). 예: --exclude-gu 구로구,금천구")
     p.add_argument("--input", default=CATALOG_SCORED,
                    help=f"입력 CSV (기본 {CATALOG_SCORED})")
     p.add_argument("--no-refresh", action="store_true",
@@ -148,6 +150,7 @@ def main():
 
     bmin = args.budget - args.rng
     bmax = args.budget + args.rng
+    exclude_set = {g.strip() for g in args.exclude_gu.split(",") if g.strip()}
 
     with open(src, "r", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
@@ -166,6 +169,8 @@ def main():
             continue
         if args.region and r.get("지역구분") != args.region:
             continue
+        if exclude_set and r.get("시구") in exclude_set:
+            continue
         matched.append(r)
 
     matched.sort(key=lambda r: -to_float(r.get("입지점수")))
@@ -179,6 +184,8 @@ def main():
         print(f"최소 입지점수: {args.min_score}")
     if args.region:
         print(f"지역 필터: {args.region}")
+    if exclude_set:
+        print(f"제외 시구: {', '.join(sorted(exclude_set))}")
     print(f"매칭: {len(matched)}개 → 상위 {min(args.top_n, len(matched))}개\n")
 
     # 추천 표

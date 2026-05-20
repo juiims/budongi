@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from rtms_client import fetch_trades
+from lib.rtms_client import fetch_trades
 
 
 def month_range(end_year: int, end_month: int, count: int) -> list[str]:

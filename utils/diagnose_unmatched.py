@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from rtms_client import ALL_LAWD
+from lib.rtms_client import ALL_LAWD
 
 CATALOG_RAW = Path("data/candidates_hangang_south_catalog.csv")
 RTMS_DIR = Path("data/rtms_trades")

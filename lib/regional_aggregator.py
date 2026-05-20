@@ -9,7 +9,7 @@ import time
 import csv
 from datetime import datetime
 
-from naver_realty_new import setup_driver, bootstrap_token, fetch_json
+from lib.naver_realty_new import setup_driver, bootstrap_token, fetch_json
 
 if sys.platform == "win32":
     try:

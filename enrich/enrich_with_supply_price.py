@@ -99,15 +99,16 @@ def _parse_build_year(s):
 
 
 def _date_ok(chosen, build_yr) -> bool:
-    """모집공고일과 catalog 준공년월 시점 일관성 — 분양→입주 보통 2-4년.
+    """모집공고일과 catalog 준공년월 시점 일관성 — 분양→입주 보통 2-3년.
 
-    catalog 준공년 - 분양 공고년 ∈ [-1, +5] 만 허용.
+    catalog 준공년 - 분양 공고년 ∈ [-1, +3] 만 허용.
+    이전 범위(+5)는 같은 부지에 분양 2건 존재(재건축 분양 + 구단지 매칭) 가능성 흡수.
     -1 이하 = 이미 준공된 구축 단지 + 신규 분양정보 매칭 = fuzzy 오매칭
     """
     if build_yr is None or pd.isna(chosen.get("모집공고일")):
         return True
     diff = build_yr - chosen["모집공고일"].year
-    return -1 <= diff <= 5
+    return -1 <= diff <= 3
 
 
 def match_catalog_to_supply(catalog: pd.DataFrame, supply_agg: pd.DataFrame) -> pd.DataFrame:

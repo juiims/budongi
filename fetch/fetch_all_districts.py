@@ -2,8 +2,8 @@
 import time
 from pathlib import Path
 
-from rtms_client import ALL_LAWD
-from fetch_rtms_district import fetch_district
+from lib.rtms_client import ALL_LAWD
+from fetch.fetch_rtms_district import fetch_district
 
 SKIP_IF_EXISTS = True
 MONTHS = 120  # 10년

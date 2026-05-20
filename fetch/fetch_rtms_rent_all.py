@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from rtms_client import ALL_LAWD, fetch_rents
+from lib.rtms_client import ALL_LAWD, fetch_rents
 
 SKIP_IF_EXISTS = True
 MONTHS = 120  # 10년

@@ -334,15 +334,19 @@ def load_catalog(_key):
         rtms_cols = [c for c in rtms_cols if c in rtms.columns]
         df = df.merge(rtms[rtms_cols], on="단지번호", how="left")
 
-        # 시구 자동 재분류 — RTMS sggCd가 다른 시 단지면 catalog 분류 오류로 보고 덮어쓰기
-        # (동탄구 같이 시 prefix 일치하면 catalog 자치구 정보 유지)
+        # 시구 자동 재분류 — RTMS sggCd 기준으로 catalog 분류 오류 보정.
+        # 단, RTMS 매칭 자체가 잘못되면 학군·수급·전세가율 enrich가 연쇄 오염되므로
+        # **매칭_방식=exact + RTMS_신뢰도=높음**(30+ 거래)인 경우만 신뢰.
         def _prefix(s):
             return str(s).split()[0] if pd.notna(s) else None
 
         df["시구_원본"] = df["시구"]
+        method_ok = df["매칭_방식"].eq("exact") if "매칭_방식" in df.columns else False
+        conf_ok = df["RTMS_신뢰도"].eq("높음") if "RTMS_신뢰도" in df.columns else False
         mismatch = (
             df["RTMS_자치구"].notna()
             & (df["시구"].apply(_prefix) != df["RTMS_자치구"].apply(_prefix))
+            & method_ok & conf_ok
         )
         df.loc[mismatch, "시구"] = df.loc[mismatch, "RTMS_자치구"]
         df["지역구분"] = df["시구"].apply(lambda s: "서울" if s in SEOUL_DISTRICTS else "경기")
@@ -430,13 +434,19 @@ def score_dataframe(df, weights_seoul, weights_gg, cuts):
     df["s_env"] = df.apply(f_env, axis=1)
     df["s_me"] = df["본인직장_km"].apply(lambda v: linear_score(v, cuts["me"]))
     df["s_spouse"] = df["배우자직장_km"].apply(lambda v: linear_score(v, cuts["spouse"]))
-    # 학군 점수 (catalog_apt2_school_scored.csv 에서 점수_학군_v2 또는 점수_학군)
+    # 학군 점수 — NaN은 NaN으로 유지 (데이터 없음 ≠ 0점)
     if "점수_학군_v2" in df.columns:
-        df["s_school"] = pd.to_numeric(df["점수_학군_v2"], errors="coerce").fillna(0)
+        df["s_school"] = pd.to_numeric(df["점수_학군_v2"], errors="coerce")
     elif "점수_학군" in df.columns:
-        df["s_school"] = pd.to_numeric(df["점수_학군"], errors="coerce").fillna(0)
+        df["s_school"] = pd.to_numeric(df["점수_학군"], errors="coerce")
     else:
-        df["s_school"] = 0
+        df["s_school"] = float("nan")
+
+    # 학군_매칭="시" 단계 fallback은 shrinkage 미적용 → 신뢰도 낮음.
+    # "동탄2 학군 프리미엄이 화성시 전체 평균에 묻히는" 종류의 추측을 막기 위해 NaN 처리
+    # (가중치 합에서 제외되어 다른 요소로 재정규화됨)
+    if "학군_매칭" in df.columns:
+        df.loc[df["학군_매칭"] == "시", "s_school"] = float("nan")
 
     def total(row):
         if row["지역구분"] == "서울":
@@ -450,10 +460,13 @@ def score_dataframe(df, weights_seoul, weights_gg, cuts):
                        "교통": row["s_transit"], "환경": row["s_env"],
                        "학군": row["s_school"],
                        "본인직장": row["s_me"], "배우자직장": row["s_spouse"]}
-        total_w = sum(w.values())
-        if total_w == 0:
+        # NaN 요소는 가중치 합에서 제외하고 남은 요소로 재정규화
+        # ("데이터 없음"을 "0점"으로 만들지 않기 위함)
+        valid = {k: v for k, v in factors.items() if pd.notna(v)}
+        valid_w = sum(w[k] for k in valid)
+        if valid_w == 0:
             return 0
-        return round(sum(factors[k] * w[k] for k in w) / total_w, 1)
+        return round(sum(valid[k] * w[k] for k in valid) / valid_w, 1)
 
     df["입지점수"] = df.apply(total, axis=1)
     return df
@@ -490,6 +503,14 @@ with st.sidebar:
     budget = st.number_input("예산 (만원)", 10000, 300000, 80000, step=1000)
     rng = st.slider("범위 ± (만원)", 1000, 30000, 5000, step=1000)
     region = st.radio("지역", ["전체", "서울", "경기"], horizontal=True)
+    exclude_seoul_sigu = []
+    if region == "서울":
+        exclude_seoul_sigu = st.multiselect(
+            "제외할 시구",
+            options=sorted(SEOUL_DISTRICTS),
+            default=[],
+            help="선택한 시구는 결과에서 제외",
+        )
     min_score = st.slider("최소 입지점수", 0, 80, 0)
     top_n = st.slider("상위 N개", 5, 200, 30)
 
@@ -581,7 +602,7 @@ with st.sidebar:
                 env = os.environ.copy()
                 env["SCREEN_GYEONGGI"] = "1"
                 env["SCREEN_NO_PRICE_FILTER"] = "1"
-                subprocess.run([sys.executable, "screen_candidates.py"], env=env, check=True)
+                subprocess.run([sys.executable, "-m", "lib.screen_candidates"], env=env, check=True)
                 st.success("재빌드 완료")
                 st.cache_data.clear()
                 st.rerun()
@@ -616,14 +637,18 @@ scored = score_dataframe(catalog, weights_seoul, weights_gg, cuts)
 
 
 def _price_score(row):
-    """가격축 점수 (0-100). 회복률 + 분양가대비(있을 때 가중).
+    """가격축 점수 (0-100). 메인평형 회복률 + 분양가대비.
 
-    임계값은 catalog 실제 분포 percentile 기반 (2026-05 검증):
-      회복률 75% → 0점, 100% → 100점 (25 percentile ~ 최대)
-      분양가대비 100% → 0점, 200% → 100점 (분양 후 +0% ~ +100%)
-    분양가 매칭된 단지는 두 신호 결합, 없으면 회복률만.
+    임계값 (catalog 분포 percentile 기반, 2026-05 검증):
+      회복률 75% → 0점, 100% → 100점
+      분양가대비 100% → 0점, 200% → 100점
+
+    **메인평형 회복률 우선** — 33평/24평 혼재 단지의 outlier 회피.
+    메인평형 데이터 없을 때만 전체 회복률(`회복률_pct`)로 fallback.
     """
-    rec = row.get("회복률_pct")
+    rec = row.get("메인평형_회복률_pct")
+    if pd.isna(rec):
+        rec = row.get("회복률_pct")
     sup = row.get("분양가대비_pct")
     s_rec = None
     if pd.notna(rec):
@@ -715,6 +740,8 @@ if apply_dsr_filter and max_house_price > 0:
     mask &= scored["최저매매가_만원"] <= max_house_price
 if region != "전체":
     mask &= scored["지역구분"] == region
+if region == "서울" and exclude_seoul_sigu:
+    mask &= ~scored["시구"].isin(exclude_seoul_sigu)
 
 filtered = scored[mask].sort_values("입지점수", ascending=False).head(top_n)
 
@@ -777,9 +804,9 @@ else:
     show["Naver"] = show["단지번호"].apply(lambda c: NAVER_URL.format(c))
 
     # 기본(항상) — 식별·점수·가격
-    BASE_COLS = ["입지점수", "가격점수", "자치구_수급점수", "점수_학군_v2", "DSR_매수가능",
-                 "지역구분", "시구", "동", "단지명",
-                 "최저매매가_만원", "최고매매가_만원"]
+    BASE_COLS = ["지역구분", "시구", "동", "단지명",
+                 "최저매매가_만원", "최고매매가_만원",
+                 "입지점수", "가격점수", "자치구_수급점수", "점수_학군_v2", "DSR_매수가능"]
     GROUP_COLS = {
         "가격 시계열": ["전고점_만원", "직전거래_만원", "회복률_pct",
                        "메인평형_㎡", "메인평형_회복률_pct", "메인평형_거래수",
@@ -808,9 +835,13 @@ else:
         show[DISPLAY].reset_index(drop=True),
         width="stretch",
         column_config={
+            "지역구분": st.column_config.TextColumn("지역", pinned=True),
+            "시구": st.column_config.TextColumn("시구", pinned=True),
+            "동": st.column_config.TextColumn("동", pinned=True),
+            "단지명": st.column_config.TextColumn("단지명", pinned=True),
             "Naver": st.column_config.LinkColumn("Naver", display_text="🔗 보기"),
             "입지점수": st.column_config.NumberColumn("입지", format="%.1f"),
-            "가격점수": st.column_config.NumberColumn("가격", format="%.1f", help="회복률·분양가대비 결합(0-100). 회복률 60→90% 0→100점, 분양가대비 100→200% 0→100점, 둘 다 있을 때 회복률 0.6 가중"),
+            "가격점수": st.column_config.NumberColumn("가격", format="%.1f", help="메인평형 회복률·분양가대비 결합(0-100). 회복률 75→100% 0→100점, 분양가대비 100→200% 0→100점, 둘 다 있을 때 회복률 0.6 가중. 메인평형 없으면 전체 회복률 fallback"),
             "DSR_매수가능": st.column_config.TextColumn("매수", help="현재 사이드바 DSR 설정으로 살 수 있는지 (✅/✗)"),
             "자치구_수급점수": st.column_config.NumberColumn("수급", format="%.1f", help="RTMS 자체 derive — 자치구 거래활성도(50%) + 가격모멘텀(30%) + 신축비율 역(20%)"),
             "자치구_거래활성도": st.column_config.NumberColumn("거래활성도", format="%.2f", help="최근12개월 월평균거래 ÷ 전체기간 월평균. 1.0=평균, >1=증가"),
@@ -828,8 +859,8 @@ else:
             "apt2_특목비율": st.column_config.NumberColumn("특목비율", format="%.3f", help="apt2.me 시군구 특목 진학 비율"),
             "학군_매칭": st.column_config.TextColumn("학군매칭", help="동/시구/시 매칭 단계"),
             "시구_원본": st.column_config.TextColumn("원본시구", help="catalog 빌드 시 분류 (RTMS 매칭으로 자동 보정된 경우 시구 컬럼과 다름)"),
-            "최저매매가_만원": st.column_config.NumberColumn("최저(만원)", format="%d"),
-            "최고매매가_만원": st.column_config.NumberColumn("최고(만원)", format="%d"),
+            "최저매매가_만원": st.column_config.NumberColumn("최저(만원)", format="%d", pinned=True),
+            "최고매매가_만원": st.column_config.NumberColumn("최고(만원)", format="%d", pinned=True),
             "평형구간": st.column_config.TextColumn("평형구간"),
             "최소평": st.column_config.NumberColumn("최소평", format="%.1f"),
             "최대평": st.column_config.NumberColumn("최대평", format="%.1f"),

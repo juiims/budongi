@@ -8,8 +8,8 @@ import os
 import sys
 import time
 
-from naver_realty_new import setup_driver, bootstrap_token
-from screen_candidates import (
+from lib.naver_realty_new import setup_driver, bootstrap_token
+from lib.screen_candidates import (
     screen_district, save_csv, GANGNAM_STN, HAPJEONG_STN, NAMYANG_RND,
 )
 

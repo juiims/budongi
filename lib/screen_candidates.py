@@ -23,8 +23,8 @@ import sys
 import time
 from datetime import datetime
 
-from naver_realty_new import setup_driver, bootstrap_token, fetch_json
-from regional_aggregator import PYEONG_BUCKETS, fetch_markers
+from lib.naver_realty_new import setup_driver, bootstrap_token, fetch_json
+from lib.regional_aggregator import PYEONG_BUCKETS, fetch_markers
 
 if sys.platform == "win32":
     try:

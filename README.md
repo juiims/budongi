@@ -74,21 +74,41 @@ python budget_search.py 80000 --no-urls
 
 ```
 budong/
-├── data/                                   # Phase 1 데이터
-│   ├── catalog_scored.csv                  ← 메인 검색 베이스 (2,469 단지)
-│   ├── candidates_hangang_south_catalog.csv ← raw (3,509행, dedup 전)
-│   ├── subway_stations.csv                 ← 수도권 741개 역 좌표
-│   └── station_id_table.parquet            ← 원본 백업
-├── archive/                                # 이전 작업 보관 (archive/README.md 참고)
-├── budget_search.py                        ← 메인 사용자 도구
-├── score_candidates.py                     ← 입지 점수화
-├── screen_candidates.py                    ← 단지 스크리닝
-├── naver_realty_new.py                     ← 단지 스크래퍼 (의존)
-├── regional_aggregator.py                  ← 공용 함수 (의존)
-├── patch_catalog.py                        ← 누락 자치구 보강 도구
-├── build_subway_db.py                      ← parquet → CSV 변환 (1회용)
-├── PROGRESS.md                             ← 진행 상황·산출물 상세
-└── README.md                               ← 이 파일
+├── streamlit_app.py            ← 웹 UI 엔트리
+├── budget_search.py            ← CLI 엔트리
+│
+├── lib/                        # 코어 라이브러리 (다른 패키지가 import)
+│   ├── naver_realty_new.py     · Naver 부동산 클라이언트 (Selenium)
+│   ├── rtms_client.py          · 국토부 RTMS API
+│   ├── regional_aggregator.py  · Naver markers·평형 버킷
+│   └── screen_candidates.py    · 한강 이남 단지 스크리닝
+│
+├── fetch/                      # 외부 데이터 수집 (5개)
+│   └── fetch_{rtms_district,all_districts,rtms_rent_all,apt2_school,apt_recovery}.py
+│
+├── enrich/                     # catalog 보강 파이프라인 (7개)
+│   └── enrich_with_{subway,rtms,rtms_global,supply_price,district_supply,jeonse_ratio}.py · enrich_catalog_apt2.py
+│
+├── score/                      # 점수화 (4개)
+│   └── score_candidates.py · score_school.py · score_school_v2.py · school_district.py
+│
+├── utils/                      # 유틸·진단 (5개)
+│   └── build_subway_db.py · patch_catalog.py · extract_school_only.py
+│       analyze_apt2_school.py · diagnose_unmatched.py
+│
+├── data/                       # 정형 데이터 (catalog·subway·rtms·school·apt2)
+├── archive/                    # 폐기·1회성 (archive/README.md)
+├── scratch/                    # 디버그 HTML·로그 (gitignored)
+├── .streamlit/                 # Streamlit 설정
+└── PROGRESS.md · README.md · requirements.txt
+```
+
+스크립트 실행은 `python -m` 패키지 경로 사용:
+```powershell
+python -m lib.screen_candidates       # catalog raw 빌드
+python -m score.score_candidates      # 입지 점수
+python -m fetch.fetch_all_districts   # RTMS 자치구별 10년치
+python -m enrich.enrich_with_rtms_global
 ```
 
 ## 점수화
@@ -111,12 +131,12 @@ budong/
 # catalog 재빌드 (가격 변동 반영, 25-30분 백그라운드)
 $env:SCREEN_GYEONGGI='1'
 $env:SCREEN_NO_PRICE_FILTER='1'
-python screen_candidates.py
+python -m lib.screen_candidates
 
 # 점수 재계산 (가중치·컷오프 수정 후)
 $env:SCORE_INPUT='data/candidates_hangang_south_catalog.csv'
 $env:SCORE_OUTPUT='data/catalog_scored.csv'
-python score_candidates.py
+python -m score.score_candidates
 ```
 
 ## 데이터 출처

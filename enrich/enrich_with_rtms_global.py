@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from rtms_client import ALL_LAWD
+from lib.rtms_client import ALL_LAWD
 
 CATALOG_SCORED = Path("data/catalog_scored.csv")
 CATALOG_RAW = Path("data/candidates_hangang_south_catalog.csv")
@@ -31,7 +31,7 @@ OUT_PATH = Path("data/catalog_with_rtms.csv")
 FUZZY_CUTOFF = 0.85
 EXACT_AREA_TOL = 5    # ㎡
 FUZZY_AREA_TOL = 3    # ㎡
-EXACT_MAX_GEO_KM = 50.0   # exact: 명백히 다른 도시(서울→안성 등)만 reject
+EXACT_MAX_GEO_KM = 10.0   # exact: "래미안"·"푸르지오" 등 흔한 정규화명의 동명단지 매칭 방지 (다른 시 유입 차단)
 FUZZY_MAX_GEO_KM = 15.0   # fuzzy: 자치구 인접 정도만 허용
 GEO_UMD_RADIUS_KM = 2.0   # 3차 geo: 인근 (sggCd, umdNm) 후보 반경
 GEO_AREA_TOL = 3      # 3차 geo: 면적 ±3㎡
@@ -182,13 +182,13 @@ def match_single(cat_row: pd.Series, all_trades: pd.DataFrame,
     if exact_idx is not None and len(exact_idx) > 0:
         candidates = all_trades.loc[exact_idx]
         # 면적 필터 (있을 때만)
+        # 면적 미일치 시 전체 후보로 fallback하지 않음 — catalog 공급면적 vs RTMS 전용면적
+        # 차이가 커서 다 unmatch일 가능성도 있지만, 다른 단지일 가능성이 더 크기 때문.
         if pd.notna(area_min) and pd.notna(area_max):
-            filtered = candidates[
+            verified = candidates[
                 (candidates["excluUseAr"] >= area_min - EXACT_AREA_TOL)
                 & (candidates["excluUseAr"] <= area_max + EXACT_AREA_TOL)
             ]
-            # 면적 통과한 게 있으면 그것 사용, 없으면 전체 후보 (면적 정보 부정확 대비)
-            verified = filtered if len(filtered) > 0 else candidates
         else:
             verified = candidates
 

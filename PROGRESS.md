@@ -95,25 +95,22 @@ catalog_scored.csv 에서 가격 ±5천만원 매칭
 
 ## 디렉토리 구조
 
+자세한 분류는 `README.md` 참조. 요약:
+
 ```
 budong/
-├── data/
-│   ├── catalog_scored.csv               # 메인 검색 베이스 (2469개 + 점수)
-│   ├── candidates_hangang_south_catalog.csv  # 가격 무관 raw (3509)
-│   ├── candidates_hangang_south.csv     # 9억 이하 (2594, 이전 단계)
-│   ├── candidates_scored.csv            # 9억 이하 점수 (이전 단계)
-│   ├── subway_stations.csv              # 수도권 741개 역 좌표
-│   ├── station_id_table.parquet         # 원본 parquet
-│   ├── korean_subway_raw.json5          # 미사용 (서울만)
-│   └── 서울교통공사_노선별 지하철역 정보.csv   # 미사용 (좌표 없음)
-├── screen_candidates.py                 # 단지 스크리닝
-├── score_candidates.py                  # 입지 점수화
-├── budget_search.py                     # 예산 검색 (메인)
-├── build_subway_db.py                   # parquet → CSV
-├── patch_catalog.py                     # 누락 자치구 보강
-├── inspect_*.py                         # 디버깅 도구 모음
-└── PROGRESS.md                          # 이 파일
+├── streamlit_app.py · budget_search.py    # 엔트리 (루트)
+├── lib/    # naver_realty_new · rtms_client · regional_aggregator · screen_candidates
+├── fetch/  # fetch_rtms_{district,all_districts,rent_all} · fetch_apt2_school · fetch_apt_recovery
+├── enrich/ # enrich_with_{subway,rtms,rtms_global,supply_price,district_supply,jeonse_ratio} · enrich_catalog_apt2
+├── score/  # score_candidates · score_school(_v2) · school_district
+├── utils/  # build_subway_db · patch_catalog · extract_school_only · analyze_apt2_school · diagnose_unmatched
+├── data/   # 정형 데이터
+├── archive/ # 폐기·1회성 (archive/README.md)
+└── scratch/ # 디버그 HTML/로그 (gitignored)
 ```
+
+실행은 `python -m <package>.<module>` (예: `python -m lib.screen_candidates`). subprocess 호출도 모두 `-m` 방식으로 갱신됨.
 
 ## 일반 사용법 빠른 참조
 
