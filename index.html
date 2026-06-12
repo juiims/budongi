@@ -211,8 +211,9 @@
 
     .btn-no.roaming {
       position: fixed;
-      transition: left 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  top  0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      pointer-events: none; /* 절대 클릭 불가 */
+      transition: left 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  top  0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     .doc-footer {
@@ -536,7 +537,7 @@
   <!-- 배경 타이틀 -->
   <div class="main-title">
     <h1>💌 LOVE CORP. 💌</h1>
-    <p>낭만주식회사 · 연애사업본부</p>
+    <p>ZZogumi Corp. · 연애사업본부</p>
   </div>
 
   <!-- 데이트 신청 팝업 -->
@@ -708,13 +709,11 @@
       bg.appendChild(el);
     }
 
-    /* ── No 버튼 : 마우스 근접 시 반대 방향으로 천천히 이동 ── */
+    /* ── No 버튼 : 마우스 근접 시 반대 방향으로 이동 (절대 잡기 불가) ── */
     const btnNo = document.getElementById('btnNo');
     const overlay = document.getElementById('overlay');
     let isRoaming = false;
     let lastFlee = 0;
-    const FLEE_COOLDOWN = 350; // ms — 너무 잦은 이동 방지
-    const FLEE_THRESHOLD = 200; // px — 이 거리 안에 들어오면 도망
 
     document.addEventListener('mousemove', (e) => {
       if (overlay.classList.contains('hidden')) return;
@@ -723,12 +722,25 @@
       const cy = rect.top  + rect.height / 2;
       const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
 
-      if (dist < FLEE_THRESHOLD) {
+      if (dist < 280) {
         if (!isRoaming) activateRoaming();
-        const now = Date.now();
-        if (now - lastFlee > FLEE_COOLDOWN) {
-          fleeFrom(e.clientX, e.clientY);
-          lastFlee = now;
+
+        if (dist < 70) {
+          // 매우 근접 — 순간이동 (transition 일시 제거)
+          btnNo.style.transition = 'none';
+          fleeFrom(e.clientX, e.clientY, true);
+          requestAnimationFrame(() => {
+            btnNo.style.transition = '';
+          });
+          lastFlee = Date.now();
+        } else {
+          // 일반 근접 — 거리에 비례해 쿨다운 단축
+          const cooldown = dist < 140 ? 80 : 200;
+          const now = Date.now();
+          if (now - lastFlee > cooldown) {
+            fleeFrom(e.clientX, e.clientY, false);
+            lastFlee = now;
+          }
         }
       }
     });
@@ -743,7 +755,7 @@
       isRoaming = true;
     }
 
-    function fleeFrom(mouseX, mouseY) {
+    function fleeFrom(mouseX, mouseY, instant) {
       const margin = 20;
       const bw = btnNo.offsetWidth;
       const bh = btnNo.offsetHeight;
@@ -753,18 +765,17 @@
       const curX = parseFloat(btnNo.style.left) || window.innerWidth  / 2;
       const curY = parseFloat(btnNo.style.top)  || window.innerHeight / 2;
 
-      // 마우스 → 버튼 방향 벡터, 그 방향으로 도망
       let dx = curX - mouseX;
       let dy = curY - mouseY;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len;
       dy /= len;
 
-      const escDist = 180 + Math.random() * 80;
+      // 순간이동 시엔 마우스 반대편 화면 끝으로
+      const escDist = instant ? 800 : 200 + Math.random() * 100;
       let newX = curX + dx * escDist;
       let newY = curY + dy * escDist;
 
-      // 화면 경계 엄격 클램핑
       newX = Math.max(margin, Math.min(maxX, newX));
       newY = Math.max(margin, Math.min(maxY, newY));
 
