@@ -560,8 +560,8 @@
       justify-content: center;
       gap: 8px;
       width: 100%;
-      background: linear-gradient(135deg, #fee500, #fada00);
-      color: #3c1e1e;
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
       border: none;
       padding: 13px;
       border-radius: 3px;
@@ -570,13 +570,14 @@
       cursor: pointer;
       letter-spacing: 2px;
       margin-top: 16px;
-      box-shadow: 0 4px 16px rgba(250, 218, 0, 0.5);
+      box-shadow: 0 4px 16px rgba(194, 24, 91, 0.4);
       transition: transform 0.15s, box-shadow 0.15s;
+      text-decoration: none;
     }
 
     .btn-share:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(250, 218, 0, 0.6);
+      box-shadow: 0 8px 24px rgba(194, 24, 91, 0.5);
     }
 
     .share-done {
@@ -856,7 +857,7 @@
           끝으로 한 말씀 올립니다 :<br>
           <span class="highlight">감사합니다. 사랑해. 💕</span>
         </div>
-        <button class="btn-share" onclick="sendMessenger()">💬 카카오톡으로 보내기</button>
+        <button class="btn-share" id="btnShare" onclick="sendMessenger()">📧 이메일로 전달하기</button>
         <div class="share-done" id="shareDone"></div>
       </div>
       <div class="thank-footer">결재 완료 · 쭈꾸미's 직인</div>
@@ -1072,51 +1073,34 @@
       }, 500);
     }
 
-    /* ── 메신저 공유 ── */
+    /* ── 이메일 전달 ── */
+    const MAIL_TO = 'mizno9503@naver.com';
+
     function sendMessenger() {
-      const text =
-        `💌 데이트 확정 통보서\n` +
-        `─────────────────\n` +
-        `코스 : ${_selectedCourse}\n` +
-        `일시 : ${_dateStr} ${_selectedTime}\n` +
-        `식사 : ${_selectedFood}\n` +
-        `─────────────────\n` +
-        `쭈꾸미's 연애사업본부 💕`;
+      const subject = '[데이트 확정] ' + _selectedCourse;
+      const body =
+        '💌 데이트 확정 통보서\n' +
+        '─────────────────\n' +
+        '코스 : ' + _selectedCourse + '\n' +
+        '일시 : ' + _dateStr + ' ' + _selectedTime + '\n' +
+        '식사 : ' + _selectedFood + '\n' +
+        '─────────────────\n' +
+        '쭈꾸미 연애사업본부 💕';
 
-      if (navigator.share) {
-        navigator.share({ title: '데이트 확정 통보서 💌', text })
-          .then(() => showShareDone('✔ 전송 완료!'))
-          .catch(() => copyFallback(text));
-      } else {
-        copyFallback(text);
-      }
-    }
+      const mailto =
+        'mailto:' + MAIL_TO +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body='    + encodeURIComponent(body);
 
-    function copyFallback(text) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-          .then(() => showShareDone('📋 복사됐어요! 카카오톡에 붙여넣기 하세요 💕'))
-          .catch(() => execCopy(text));
-      } else {
-        execCopy(text);
-      }
-    }
+      // mailto 링크 열기
+      const a = document.createElement('a');
+      a.href = mailto;
+      a.target = '_blank'; // iframe 안에서도 동작
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
-    /* iframe 샌드박스에서도 동작하는 레거시 복사 */
-    function execCopy(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      try {
-        document.execCommand('copy');
-        showShareDone('📋 복사됐어요! 카카오톡에 붙여넣기 하세요 💕');
-      } catch {
-        showShareDone('❗ 직접 복사해 주세요');
-      }
-      document.body.removeChild(ta);
+      showShareDone('📬 메일 앱이 열렸어요! 전송 버튼만 눌러주세요 💕');
     }
 
     function showShareDone(msg) {
