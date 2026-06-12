@@ -553,6 +553,48 @@
     .food-item .food-name { font-size: 0.88rem; font-weight: 700; color: #880e4f; letter-spacing: 1px; }
     .food-item .food-desc { font-size: 0.7rem; color: #aaa; margin-top: 4px; }
 
+    /* 요청사항 */
+    .request-textarea {
+      width: 100%;
+      min-height: 130px;
+      border: 1px solid #f0d0de;
+      border-radius: 3px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: #333;
+      background: #fffbfd;
+      resize: vertical;
+      outline: none;
+      line-height: 1.8;
+      transition: border-color 0.2s;
+    }
+
+    .request-textarea:focus { border-color: #e91e63; }
+    .request-textarea::placeholder { color: #ccc; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn-skip {
+      flex: 1;
+      background: white;
+      color: #bbb;
+      border: 1px solid #ddd;
+      padding: 11px;
+      border-radius: 3px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: background 0.15s;
+    }
+
+    .btn-skip:hover { background: #fdf0f5; color: #c2185b; border-color: #f0d0de; }
+
     /* 공유 버튼 */
     .btn-share {
       display: flex;
@@ -839,6 +881,31 @@
     </div>
   </div>
 
+  <!-- 요청사항 -->
+  <div class="fullscreen-layer" id="requestScreen">
+    <div class="datetime-card">
+      <div class="course-doc-header">
+        <div class="course-doc-title">추 가 요 청 서</div>
+        <div class="course-doc-sub">하고 싶은 말이 있다면 자유롭게 작성하십시오</div>
+      </div>
+      <div class="datetime-body">
+        <div class="course-instruction">
+          선택 사항입니다. <strong>추가로 전달하고 싶은 말</strong>이 있다면<br>
+          아래 란에 작성하여 주시기 바랍니다.
+        </div>
+        <div class="datetime-field">
+          <label class="datetime-label">▸ 요 청 내 용</label>
+          <textarea class="request-textarea" id="requestText"
+            placeholder="예) 영화는 액션 말고 로맨스로 해줘요 💕&#10;예) 한강 갈 때 돗자리 챙겨줘요!"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn-skip" onclick="submitRequest(true)">건 너 뛰 기</button>
+          <button class="btn-confirm" style="flex:2;margin-top:0" onclick="submitRequest(false)">결 재 완 료</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 감사 화면 -->
   <div class="thank-screen" id="thankScreen">
     <div class="thank-box">
@@ -852,6 +919,7 @@
           귀하의 선택이 <span class="highlight">정상 접수</span>되었습니다.<br>
           <span class="highlight" id="selectedDatetime"></span><br>
           <span class="highlight" id="selectedFood"></span><br>
+          <span id="selectedRequestWrap"><span class="highlight" id="selectedRequest"></span><br></span>
           신청인은 본 결과에 깊이 감사드리며,<br>
           해당 일정에 최선을 다할 것을 <span class="highlight">공식 서약</span>합니다.<br><br>
           끝으로 한 말씀 올립니다 :<br>
@@ -1064,13 +1132,35 @@
       setTimeout(() => {
         document.getElementById('foodScreen').classList.remove('visible');
         setTimeout(() => {
-          document.getElementById('selectedCourseName').textContent = _selectedCourse;
-          document.getElementById('selectedDatetime').textContent = `📅 ${_dateStr}  ${_selectedTime}`;
-          document.getElementById('selectedFood').textContent = `🍽️ 식사: ${_selectedFood}`;
-          document.getElementById('thankScreen').classList.add('visible');
-          launchConfetti();
+          document.getElementById('requestText').value = '';
+          document.getElementById('requestScreen').classList.add('visible');
         }, 200);
       }, 500);
+    }
+
+    /* ── 요청사항 제출 ── */
+    let _requestText = '';
+
+    function submitRequest(skip) {
+      _requestText = skip ? '' : (document.getElementById('requestText').value.trim());
+      document.getElementById('requestScreen').classList.remove('visible');
+
+      setTimeout(() => {
+        document.getElementById('selectedCourseName').textContent = _selectedCourse;
+        document.getElementById('selectedDatetime').textContent = '📅 ' + _dateStr + '  ' + _selectedTime;
+        document.getElementById('selectedFood').textContent = '🍽️ 식사: ' + _selectedFood;
+
+        const wrap = document.getElementById('selectedRequestWrap');
+        if (_requestText) {
+          document.getElementById('selectedRequest').textContent = '💬 요청: ' + _requestText;
+          wrap.style.display = '';
+        } else {
+          wrap.style.display = 'none';
+        }
+
+        document.getElementById('thankScreen').classList.add('visible');
+        launchConfetti();
+      }, 200);
     }
 
     /* ── 이메일 전달 ── */
@@ -1084,6 +1174,7 @@
         '코스 : ' + _selectedCourse + '\n' +
         '일시 : ' + _dateStr + ' ' + _selectedTime + '\n' +
         '식사 : ' + _selectedFood + '\n' +
+        (_requestText ? '요청 : ' + _requestText + '\n' : '') +
         '─────────────────\n' +
         '쭈꾸미 연애사업본부 💕';
 
