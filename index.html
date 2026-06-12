@@ -1163,12 +1163,16 @@
       }, 200);
     }
 
-    /* ── 이메일 전달 ── */
-    const MAIL_TO = 'mizno9503@naver.com';
+    /* ── 이메일 직접 전송 (Web3Forms) ── */
+    const W3F_KEY = 'add1e177-f7be-4de3-b7a5-ef82610829b9';
 
-    function sendMessenger() {
+    async function sendMessenger() {
+      const btn = document.getElementById('btnShare');
+      btn.disabled = true;
+      btn.textContent = '⏳ 전송 중...';
+
       const subject = '[데이트 확정] ' + _selectedCourse;
-      const body =
+      const message =
         '💌 데이트 확정 통보서\n' +
         '─────────────────\n' +
         '코스 : ' + _selectedCourse + '\n' +
@@ -1178,20 +1182,29 @@
         '─────────────────\n' +
         '쭈꾸미 연애사업본부 💕';
 
-      const mailto =
-        'mailto:' + MAIL_TO +
-        '?subject=' + encodeURIComponent(subject) +
-        '&body='    + encodeURIComponent(body);
-
-      // mailto 링크 열기
-      const a = document.createElement('a');
-      a.href = mailto;
-      a.target = '_blank'; // iframe 안에서도 동작
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      showShareDone('📬 메일 앱이 열렸어요! 전송 버튼만 눌러주세요 💕');
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            access_key: W3F_KEY,
+            subject:    subject,
+            from_name:  '쭈꾸미 연애사업본부 💌',
+            message:    message
+          })
+        });
+        const json = await res.json();
+        if (json.success) {
+          btn.textContent = '✅ 전송 완료!';
+          showShareDone('💌 mizno9503@naver.com 으로 전송됐어요 💕');
+        } else {
+          throw new Error(json.message || 'failed');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '📧 이메일로 전달하기';
+        showShareDone('❌ 전송 실패: ' + err.message);
+      }
     }
 
     function showShareDone(msg) {
