@@ -239,6 +239,7 @@
       pointer-events: none;
       transition: opacity 0.5s;
       padding: 20px;
+      overflow-y: auto; /* 카드가 화면보다 길면 스크롤 허용 */
     }
 
     .fullscreen-layer.visible {
@@ -515,6 +516,19 @@
       letter-spacing: 3px;
     }
 
+    /* 모바일 반응형 */
+    @media (max-width: 480px) {
+      .main-title { padding-top: 36px; }
+      .main-title h1 { font-size: 1.7rem; letter-spacing: 2px; }
+      .doc-body, .course-body, .datetime-body { padding: 16px 16px; }
+      .thank-body { padding: 24px 20px; }
+      .time-grid { grid-template-columns: repeat(2, 1fr); }
+      .course-list { gap: 8px; }
+      .course-item { padding: 10px 8px; }
+      .course-item .icon { font-size: 1.6rem; }
+      .btn-yes, .btn-no { padding: 12px 24px; font-size: 0.9rem; }
+    }
+
     /* 폭죽 */
     .confetti-heart {
       position: fixed;
@@ -786,6 +800,38 @@
       btnNo.style.left = newX + 'px';
       btnNo.style.top  = newY + 'px';
     }
+
+    /* ── 모바일 터치: No 버튼 탭 시 즉시 도망 ── */
+    btnNo.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!isRoaming) activateRoaming();
+      const t = e.touches[0];
+      btnNo.style.transition = 'none';
+      fleeFrom(t.clientX, t.clientY, true);
+      requestAnimationFrame(() => { btnNo.style.transition = ''; });
+      lastFlee = Date.now();
+    }, { passive: false });
+
+    /* ── 모바일 터치 이동: 손가락 근접 시 도망 ── */
+    document.addEventListener('touchmove', (e) => {
+      if (overlay.classList.contains('hidden')) return;
+      const t = e.touches[0];
+      const rect = btnNo.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top  + rect.height / 2;
+      const dist = Math.hypot(t.clientX - cx, t.clientY - cy);
+
+      if (dist < 200) {
+        if (!isRoaming) activateRoaming();
+        const now = Date.now();
+        if (now - lastFlee > 80) {
+          btnNo.style.transition = 'none';
+          fleeFrom(t.clientX, t.clientY, true);
+          requestAnimationFrame(() => { btnNo.style.transition = ''; });
+          lastFlee = now;
+        }
+      }
+    }, { passive: true });
 
     /* ── Yes 클릭 ── */
     function sayYes() {
