@@ -529,6 +529,33 @@
       .btn-yes, .btn-no { padding: 12px 24px; font-size: 0.9rem; }
     }
 
+    /* 감사 토스트 */
+    .toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: white;
+      border-top: 5px solid #c2185b;
+      border-radius: 4px;
+      padding: 28px 40px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #880e4f;
+      letter-spacing: 1px;
+      text-align: center;
+      box-shadow: 0 12px 48px rgba(100, 0, 50, 0.25);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
     /* 폭죽 */
     .confetti-heart {
       position: fixed;
@@ -599,6 +626,9 @@
       <div class="doc-footer">쭈꾸미's 연애사업본부 · 직인 생략 💗</div>
     </div>
   </div>
+
+  <!-- 감사 토스트 -->
+  <div class="toast" id="toast">클릭해 주셔서 너무 고마워요 :))<br><span style="font-size:1.8rem;">💕</span></div>
 
   <!-- 데이트 코스 선택 -->
   <div class="fullscreen-layer" id="courseScreen">
@@ -837,9 +867,15 @@
     function sayYes() {
       overlay.classList.add('hidden');
       btnNo.style.display = 'none';
+
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
       setTimeout(() => {
-        document.getElementById('courseScreen').classList.add('visible');
-      }, 400);
+        toast.classList.remove('show');
+        setTimeout(() => {
+          document.getElementById('courseScreen').classList.add('visible');
+        }, 350);
+      }, 1800);
     }
 
     /* ── 코스 선택 ── */
