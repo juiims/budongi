@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>데이트 동행 신청서</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #ffe4f0 0%, #ffd6e8 30%, #ffb3d4 60%, #ff8dc7 100%);
+      font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 떠다니는 하트 배경 */
+    .hearts-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .heart-float {
+      position: absolute;
+      animation: floatUp linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(110vh) rotate(0deg); opacity: 0.5; }
+      100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* 배경 타이틀 */
+    .main-title {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding-top: 60px;
+      color: #c2185b;
+      text-shadow: 2px 2px 8px rgba(255,255,255,0.7);
+    }
+
+    .main-title h1 {
+      font-size: 2.4rem;
+      letter-spacing: 4px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .main-title p {
+      font-size: 1rem;
+      margin-top: 8px;
+      color: #e91e8c;
+      letter-spacing: 2px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.04); }
+    }
+
+    /* 팝업 오버레이 — 배경이 보이도록 블러/색상 제거 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: opacity 0.4s;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 공문서 스타일 팝업 */
+    .popup {
+      background: white;
+      border-radius: 4px;
+      border-top: 6px solid #c2185b;
+      padding: 0;
+      width: 90%;
+      max-width: 460px;
+      box-shadow: 0 12px 48px rgba(100, 0, 50, 0.25);
+      animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.7) translateY(30px); opacity: 0; }
+      to   { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .doc-header {
+      background: #fdf0f5;
+      border-bottom: 1px solid #f0d0de;
+      padding: 18px 28px 14px;
+      text-align: center;
+    }
+
+    .doc-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #880e4f;
+      letter-spacing: 6px;
+    }
+
+    .doc-stamp {
+      font-size: 0.75rem;
+      color: #aaa;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    .doc-body {
+      padding: 22px 28px;
+    }
+
+    .doc-meta {
+      border: 1px solid #f0d0de;
+      border-radius: 3px;
+      font-size: 0.82rem;
+      color: #555;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+
+    .doc-meta-row {
+      display: flex;
+      border-bottom: 1px solid #f0d0de;
+    }
+
+    .doc-meta-row:last-child { border-bottom: none; }
+
+    .doc-meta-label {
+      background: #fdf0f5;
+      padding: 7px 14px;
+      font-weight: 700;
+      color: #880e4f;
+      min-width: 80px;
+      border-right: 1px solid #f0d0de;
+    }
+
+    .doc-meta-value {
+      padding: 7px 14px;
+      flex: 1;
+    }
+
+    .doc-content {
+      font-size: 0.88rem;
+      color: #333;
+      line-height: 2;
+      border-left: 3px solid #f48fb1;
+      padding-left: 14px;
+      margin-bottom: 22px;
+    }
+
+    .doc-content strong { color: #c2185b; }
+
+    .doc-notice {
+      font-size: 0.78rem;
+      color: #999;
+      text-align: center;
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn-yes {
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
+      border: none;
+      padding: 12px 36px;
+      border-radius: 3px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 3px;
+      box-shadow: 0 4px 16px rgba(194, 24, 91, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-yes:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(194, 24, 91, 0.5);
+    }
+
+    .btn-no {
+      background: white;
+      color: #bbb;
+      border: 1px solid #ddd;
+      padding: 12px 36px;
+      border-radius: 3px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 3px;
+      white-space: nowrap;
+      z-index: 200;
+    }
+
+    .btn-no.roaming {
+      position: fixed;
+      transition: left 0.15s ease, top 0.15s ease;
+    }
+
+    .doc-footer {
+      background: #fdf0f5;
+      border-top: 1px solid #f0d0de;
+      padding: 10px 28px;
+      text-align: right;
+      font-size: 0.72rem;
+      color: #bbb;
+      letter-spacing: 1px;
+    }
+
+    /* 코스 선택 화면 */
+    .course-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+      padding: 20px;
+    }
+
+    .course-screen.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .course-card {
+      background: white;
+      border-radius: 4px;
+      border-top: 6px solid #c2185b;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 12px 48px rgba(100, 0, 50, 0.25);
+      animation: slideUp 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      overflow: hidden;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+
+    .course-doc-header {
+      background: #fdf0f5;
+      border-bottom: 1px solid #f0d0de;
+      padding: 16px 28px 12px;
+      text-align: center;
+    }
+
+    .course-doc-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #880e4f;
+      letter-spacing: 5px;
+    }
+
+    .course-doc-sub {
+      font-size: 0.78rem;
+      color: #aaa;
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    .course-body { padding: 22px 28px; }
+
+    .course-instruction {
+      font-size: 0.83rem;
+      color: #666;
+      border-left: 3px solid #f48fb1;
+      padding-left: 12px;
+      margin-bottom: 18px;
+      line-height: 1.8;
+    }
+
+    .course-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .course-item {
+      border: 1px solid #f0d0de;
+      border-radius: 3px;
+      padding: 14px 12px;
+      cursor: pointer;
+      text-align: center;
+      background: #fffbfd;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s;
+    }
+
+    .course-item:hover {
+      background: #fdf0f5;
+      border-color: #e91e63;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(233, 30, 99, 0.15);
+    }
+
+    .course-item .icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+    .course-item .name { font-size: 0.9rem; font-weight: 700; color: #880e4f; letter-spacing: 1px; }
+    .course-item .desc { font-size: 0.72rem; color: #aaa; margin-top: 4px; }
+
+    /* 감사 화면 */
+    .thank-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 95;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s;
+      padding: 20px;
+    }
+
+    .thank-screen.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .thank-box {
+      background: white;
+      border-radius: 4px;
+      border-top: 6px solid #c2185b;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 12px 48px rgba(100, 0, 50, 0.3);
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .thank-header {
+      background: #fdf0f5;
+      border-bottom: 1px solid #f0d0de;
+      padding: 16px 28px 12px;
+    }
+
+    .thank-header h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #880e4f;
+      letter-spacing: 5px;
+    }
+
+    .thank-body {
+      padding: 32px 36px;
+    }
+
+    .big-emoji {
+      font-size: 4rem;
+      display: block;
+      margin-bottom: 16px;
+      animation: heartbeat 0.9s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      14%       { transform: scale(1.2); }
+      28%       { transform: scale(1); }
+      42%       { transform: scale(1.2); }
+      70%       { transform: scale(1); }
+    }
+
+    .selected-course-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
+      border-radius: 3px;
+      padding: 6px 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .thank-result {
+      border: 1px solid #f0d0de;
+      border-radius: 3px;
+      padding: 18px;
+      font-size: 0.9rem;
+      color: #444;
+      line-height: 2;
+      text-align: left;
+    }
+
+    .thank-result .highlight { color: #c2185b; font-weight: 700; }
+
+    .thank-footer {
+      background: #fdf0f5;
+      border-top: 1px solid #f0d0de;
+      padding: 12px;
+      font-size: 0.78rem;
+      color: #e91e63;
+      font-weight: 700;
+      letter-spacing: 3px;
+    }
+
+    /* 폭죽 */
+    .confetti-heart {
+      position: fixed;
+      pointer-events: none;
+      z-index: 999;
+      animation: confettiFall 1.8s ease-in forwards;
+    }
+
+    @keyframes confettiFall {
+      0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translateY(60vh) rotate(720deg) scale(0.3); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 배경 하트 -->
+  <div class="hearts-bg" id="heartsBg"></div>
+
+  <!-- 배경 타이틀 -->
+  <div class="main-title">
+    <h1>💌 LOVE CORP. 💌</h1>
+    <p>낭만주식회사 · 연애사업본부</p>
+  </div>
+
+  <!-- 데이트 신청 팝업 -->
+  <div class="overlay" id="overlay">
+    <div class="popup">
+      <div class="doc-header">
+        <div class="doc-title">데 이 트 신 청 서</div>
+        <div class="doc-stamp">문서번호 : LOVE-2026-0612 · 기밀등급 : 최상</div>
+      </div>
+
+      <div class="doc-body">
+        <div class="doc-meta">
+          <div class="doc-meta-row">
+            <div class="doc-meta-label">수 신</div>
+            <div class="doc-meta-value">이 동주 (이하 "상대방")</div>
+          </div>
+          <div class="doc-meta-row">
+            <div class="doc-meta-label">발 신</div>
+            <div class="doc-meta-value">정 희주 (이하 "신청인")</div>
+          </div>
+          <div class="doc-meta-row">
+            <div class="doc-meta-label">제 목</div>
+            <div class="doc-meta-value">데이트 동행 협조 요청의 건</div>
+          </div>
+          <div class="doc-meta-row">
+            <div class="doc-meta-label">일 자</div>
+            <div class="doc-meta-value">2026년 06월 12일</div>
+          </div>
+        </div>
+
+        <div class="doc-content">
+          상기 건과 관련하여, 신청인은 <strong>귀하께 각별한 호감</strong>을 보유하고 있음을 공식적으로 통보드리며,<br>
+          이에 <strong>데이트 동행을 정중히 요청</strong>드리오니<br>
+          검토 후 하단의 결재란에 서명하여 주시기 바랍니다.
+        </div>
+
+        <div class="doc-notice">※ "거절" 버튼은 시스템 오류로 정상 작동하지 않을 수 있습니다.</div>
+
+        <div class="btn-group">
+          <button class="btn-yes" onclick="sayYes()">✔ 수 락</button>
+          <button class="btn-no" id="btnNo">✘ 거 절</button>
+        </div>
+      </div>
+
+      <div class="doc-footer">쭈꾸미's 연애사업본부 · 직인 생략 💗</div>
+    </div>
+  </div>
+
+  <!-- 데이트 코스 선택 -->
+  <div class="course-screen" id="courseScreen">
+    <div class="course-card">
+      <div class="course-doc-header">
+        <div class="course-doc-title">데이트 코스 선택서</div>
+        <div class="course-doc-sub">하단 항목 중 1개를 선택하여 결재하십시오</div>
+      </div>
+      <div class="course-body">
+        <div class="course-instruction">
+          수락이 정상 처리되었습니다. 수고하십니다.<br>
+          <strong>희망 데이트 코스</strong>를 아래 목록에서 선택하여 주시기 바랍니다.<br>
+          선택 즉시 일정이 확정됩니다.
+        </div>
+        <div class="course-list">
+          <div class="course-item" onclick="selectCourse('🎬 영화관 데이트', this)">
+            <span class="icon">🎬</span>
+            <div class="name">영 화 관</div>
+            <div class="desc">팝콘 및 공포 체험 포함</div>
+          </div>
+          <div class="course-item" onclick="selectCourse('🌸 한강 피크닉', this)">
+            <span class="icon">🌸</span>
+            <div class="name">한강 피크닉</div>
+            <div class="desc">치맥 및 야경 관람 포함</div>
+          </div>
+          <div class="course-item" onclick="selectCourse('🍽️ 맛집 탐방', this)">
+            <span class="icon">🍽️</span>
+            <div class="name">맛 집 탐 방</div>
+            <div class="desc">칼로리 무제한 제공</div>
+          </div>
+          <div class="course-item" onclick="selectCourse('🎡 놀이공원', this)">
+            <span class="icon">🎡</span>
+            <div class="name">놀 이 공 원</div>
+            <div class="desc">공포 체험 및 커플 사진 포함</div>
+          </div>
+          <div class="course-item" onclick="selectCourse('☕ 카페 투어', this)">
+            <span class="icon">☕</span>
+            <div class="name">카 페 투 어</div>
+            <div class="desc">디저트 및 수다 무제한</div>
+          </div>
+          <div class="course-item" onclick="selectCourse('🖼️ 전시회 관람', this)">
+            <span class="icon">🖼️</span>
+            <div class="name">전 시 회</div>
+            <div class="desc">감성 충전 및 지적 허세 포함</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 감사 화면 -->
+  <div class="thank-screen" id="thankScreen">
+    <div class="thank-box">
+      <div class="thank-header">
+        <h2>데이트 확정 통보서</h2>
+      </div>
+      <div class="thank-body">
+        <span class="big-emoji">💘</span>
+        <div class="selected-course-badge" id="selectedCourseName"></div>
+        <div class="thank-result">
+          귀하의 선택이 <span class="highlight">정상 접수</span>되었습니다.<br>
+          신청인은 본 결과에 깊이 감사드리며,<br>
+          해당 일정에 최선을 다할 것을 <span class="highlight">공식 서약</span>합니다.<br><br>
+          끝으로 한 말씀 올립니다 :<br>
+          <span class="highlight">감사합니다. 사랑해. 💕</span>
+        </div>
+      </div>
+      <div class="thank-footer">결재 완료 · 쭈꾸미's 직인</div>
+    </div>
+  </div>
+
+  <script>
+    /* ── 배경 하트 생성 ── */
+    const bg = document.getElementById('heartsBg');
+    const EMOJIS = ['💕','💗','💖','💓','💞','🩷','❤️','🌸'];
+    for (let i = 0; i < 24; i++) {
+      const el = document.createElement('div');
+      el.className = 'heart-float';
+      el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (1.2 + Math.random() * 1.8) + 'rem';
+      el.style.animationDuration = (6 + Math.random() * 10) + 's';
+      el.style.animationDelay = (Math.random() * 10) + 's';
+      bg.appendChild(el);
+    }
+
+    /* ── No 버튼 도망가기 ── */
+    const btnNo = document.getElementById('btnNo');
+    let isRoaming = false;
+
+    btnNo.addEventListener('mouseenter', startRoaming);
+
+    function startRoaming() {
+      if (isRoaming) { runAway(); return; }
+      const r = btnNo.getBoundingClientRect();
+      btnNo.classList.add('roaming');
+      btnNo.style.left  = r.left + 'px';
+      btnNo.style.top   = r.top  + 'px';
+      btnNo.style.width = r.width + 'px';
+      isRoaming = true;
+      runAway();
+    }
+
+    function runAway() {
+      const margin = 20;
+      const bw = btnNo.offsetWidth;
+      const bh = btnNo.offsetHeight;
+      const maxX = window.innerWidth  - bw - margin;
+      const maxY = window.innerHeight - bh - margin;
+      let newX, newY, attempts = 0;
+      const curX = parseFloat(btnNo.style.left) || window.innerWidth / 2;
+      const curY = parseFloat(btnNo.style.top)  || window.innerHeight / 2;
+      do {
+        newX = margin + Math.random() * maxX;
+        newY = margin + Math.random() * maxY;
+        attempts++;
+      } while (Math.hypot(newX - curX, newY - curY) < 180 && attempts < 20);
+      btnNo.style.left = newX + 'px';
+      btnNo.style.top  = newY + 'px';
+    }
+
+    btnNo.addEventListener('mousemove', () => { if (isRoaming) runAway(); });
+
+    /* ── Yes 클릭 ── */
+    function sayYes() {
+      document.getElementById('overlay').classList.add('hidden');
+      btnNo.style.display = 'none';
+      setTimeout(() => {
+        document.getElementById('courseScreen').classList.add('visible');
+      }, 400);
+    }
+
+    /* ── 코스 선택 ── */
+    function selectCourse(name, el) {
+      el.style.background = 'linear-gradient(135deg, #e91e63, #c2185b)';
+      el.style.borderColor = '#c2185b';
+      el.querySelector('.name').style.color = 'white';
+      el.querySelector('.desc').style.color = 'rgba(255,255,255,0.8)';
+      setTimeout(() => {
+        document.getElementById('courseScreen').classList.remove('visible');
+        document.getElementById('selectedCourseName').textContent = name;
+        document.getElementById('thankScreen').classList.add('visible');
+        launchConfetti();
+      }, 500);
+    }
+
+    /* ── 폭죽 ── */
+    function launchConfetti() {
+      const CONF = ['💕','💗','💖','💓','💞','🩷','🌸','✨','⭐','🎊'];
+      for (let i = 0; i < 40; i++) {
+        setTimeout(() => {
+          const c = document.createElement('div');
+          c.className = 'confetti-heart';
+          c.textContent = CONF[Math.floor(Math.random() * CONF.length)];
+          c.style.left = Math.random() * 100 + 'vw';
+          c.style.top  = '-60px';
+          c.style.fontSize = (1.2 + Math.random() * 1.6) + 'rem';
+          c.style.animationDuration = (1.2 + Math.random() * 1.2) + 's';
+          document.body.appendChild(c);
+          setTimeout(() => c.remove(), 2500);
+        }, i * 60);
+      }
+    }
+  </script>
+</body>
+</html>
