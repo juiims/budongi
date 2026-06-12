@@ -1085,13 +1085,42 @@
 
       if (navigator.share) {
         navigator.share({ title: '데이트 확정 통보서 💌', text })
-          .then(() => { document.getElementById('shareDone').textContent = '✔ 전송 완료!'; })
-          .catch(() => {});
+          .then(() => showShareDone('✔ 전송 완료!'))
+          .catch(() => copyFallback(text));
       } else {
-        navigator.clipboard.writeText(text).then(() => {
-          document.getElementById('shareDone').textContent = '📋 클립보드에 복사됐어요!';
-        });
+        copyFallback(text);
       }
+    }
+
+    function copyFallback(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => showShareDone('📋 복사됐어요! 카카오톡에 붙여넣기 하세요 💕'))
+          .catch(() => execCopy(text));
+      } else {
+        execCopy(text);
+      }
+    }
+
+    /* iframe 샌드박스에서도 동작하는 레거시 복사 */
+    function execCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showShareDone('📋 복사됐어요! 카카오톡에 붙여넣기 하세요 💕');
+      } catch {
+        showShareDone('❗ 직접 복사해 주세요');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function showShareDone(msg) {
+      document.getElementById('shareDone').textContent = msg;
     }
 
     /* ── 폭죽 ── */
