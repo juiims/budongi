@@ -764,11 +764,13 @@
       let newX = curX + dx * escDist;
       let newY = curY + dy * escDist;
 
-      // 화면 경계 반사
-      if (newX < margin)  newX = margin  + Math.random() * 60;
-      if (newX > maxX)    newX = maxX    - Math.random() * 60;
-      if (newY < margin)  newY = margin  + Math.random() * 60;
-      if (newY > maxY)    newY = maxY    - Math.random() * 60;
+      // 화면 경계 엄격 클램핑
+      newX = Math.max(margin, Math.min(maxX, newX));
+      newY = Math.max(margin, Math.min(maxY, newY));
+
+      // 모서리에 갇히면 반대 축으로 탈출
+      if (newX <= margin + 1 || newX >= maxX - 1) newY = margin + Math.random() * (maxY - margin);
+      if (newY <= margin + 1 || newY >= maxY - 1) newX = margin + Math.random() * (maxX - margin);
 
       btnNo.style.left = newX + 'px';
       btnNo.style.top  = newY + 'px';
